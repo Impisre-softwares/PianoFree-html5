@@ -16,22 +16,46 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
     body {
       background: linear-gradient(145deg, #0f0f1a 0%, #1a1a2e 100%);
-      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       padding: 16px;
-      overflow: hidden;
       touch-action: manipulation;
     }
 
-    .piano-container {
+    /* ===== Контейнер с прокруткой ===== */
+    .piano-viewport {
       width: 100%;
-      max-width: 1200px;
+      max-width: 100vw;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.15) transparent;
+      border-radius: 32px;
+    }
+
+    .piano-viewport::-webkit-scrollbar {
+      height: 8px;
+    }
+    .piano-viewport::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .piano-viewport::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+    }
+
+    .piano-container {
       background: #16162a;
       border-radius: 32px;
       padding: 24px 16px 32px;
@@ -40,6 +64,8 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.05);
       position: relative;
+      transition: width 0.15s ease;
+      min-width: 320px;
     }
 
     .piano-title {
@@ -65,9 +91,9 @@
     .keys-wrapper {
       position: relative;
       display: flex;
-      height: 220px;
       gap: 2px;
       padding: 0 2px;
+      /* Высота задаётся через JS в зависимости от ширины */
     }
 
     .white-key {
@@ -113,7 +139,6 @@
 
     .black-key {
       position: absolute;
-      width: 8.5%;
       height: 60%;
       background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 40%, #0d0d0d 100%);
       border-radius: 0 0 6px 6px;
@@ -167,6 +192,9 @@
       transition: all 0.2s;
       font-family: inherit;
       letter-spacing: 0.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .control-btn:hover {
@@ -182,6 +210,36 @@
       background: rgba(255, 200, 50, 0.15);
       border-color: rgba(255, 200, 50, 0.3);
       color: #ffd866;
+    }
+
+    .control-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .zoom-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .zoom-group .control-btn {
+      border: none;
+      border-radius: 0;
+      padding: 10px 14px;
+    }
+
+    .zoom-level {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      padding: 0 8px;
+      min-width: 48px;
+      text-align: center;
     }
 
     .install-banner {
@@ -239,9 +297,6 @@
     }
 
     @media (max-width: 600px) {
-      .keys-wrapper {
-        height: 160px;
-      }
       .piano-container {
         padding: 16px 8px 24px;
         border-radius: 24px;
@@ -253,20 +308,19 @@
       }
       .black-key {
         border-radius: 0 0 4px 4px;
-        width: 9%;
       }
       .octave-label {
         font-size: 9px;
       }
-    }
-
-    @media (max-width: 380px) {
-      .keys-wrapper {
-        height: 130px;
+      .controls {
+        gap: 8px;
+      }
+      .control-btn {
+        padding: 8px 14px;
+        font-size: 12px;
       }
     }
 
-    /* Volume indicator */
     .volume-display {
       position: absolute;
       top: 12px;
@@ -284,24 +338,30 @@
 </head>
 <body>
 
-  <div class="piano-container">
-    <div class="volume-display" id="volumeDisplay">&#9834;</div>
-    <div class="piano-title">Piano</div>
+  <div class="piano-viewport" id="pianoViewport">
+    <div class="piano-container" id="pianoContainer">
+      <div class="volume-display" id="volumeDisplay">&#9834;</div>
+      <div class="piano-title">Piano</div>
 
-    <div class="octave-label">
-      <span>C2</span>
-      <span>C3</span>
-      <span>C4</span>
-      <span>C5</span>
-    </div>
+      <div class="octave-label" id="octaveLabel">
+        <span>C2</span>
+        <span>C3</span>
+        <span>C4</span>
+        <span>C5</span>
+      </div>
 
-    <div class="keys-wrapper" id="keysWrapper">
-      <!-- Клавиши генерируются JS -->
-    </div>
+      <div class="keys-wrapper" id="keysWrapper"></div>
 
-    <div class="controls">
-      <button class="control-btn on" id="soundToggle">&#9834; Звук</button>
-      <button class="control-btn" id="sustainToggle">&#9835; Сустейн</button>
+      <div class="controls">
+        <button class="control-btn on" id="soundToggle">&#9834; Звук</button>
+        <button class="control-btn" id="sustainToggle">&#9835; Сустейн</button>
+        <div class="zoom-group">
+          <button class="control-btn" id="zoomOut" title="Уменьшить">&minus;</button>
+          <span class="zoom-level" id="zoomLevel">100%</span>
+          <button class="control-btn" id="zoomIn" title="Увеличить">+</button>
+        </div>
+        <button class="control-btn" id="zoomFit" title="По размеру экрана">&#x26F6; Fit</button>
+      </div>
     </div>
   </div>
 
@@ -316,36 +376,50 @@
     const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     const START_OCTAVE = 2;
     const NUM_OCTAVES = 4;
-    const TOTAL_NOTES = NUM_OCTAVES * 12 + 1; // +1 для последней ноты C
+    const TOTAL_NOTES = NUM_OCTAVES * 12 + 1;
+
+    // Зум
+    const MIN_ZOOM = 0.5;
+    const MAX_ZOOM = 3.0;
+    const ZOOM_STEP = 0.25;
+    let zoomLevel = 1;
+    let baseWidth = 0; // ширина при 100% (подстраивается под экран)
 
     let audioCtx = null;
     let soundEnabled = true;
     let sustainEnabled = false;
-    let activeOscillators = new Map(); // note -> { osc, gain }
+    let activeOscillators = new Map();
     let sustainedNotes = new Map();
 
-    // ===== Инициализация AudioContext =====
+    // ===== AudioContext =====
     function initAudio() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
       return audioCtx;
     }
 
-    // ===== Генерация клавиш =====
+    // ===== Частота =====
+    function getFrequency(note) {
+      const match = note.match(/^([A-G]#?)(\d+)$/);
+      if (!match) return 440;
+      const name = match[1];
+      const octave = parseInt(match[2]);
+      const semitoneMap = { 'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11 };
+      const midi = (octave + 1) * 12 + semitoneMap[name];
+      return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    // ===== Построение клавиатуры =====
+    const whiteKeys = [];
+    const blackKeysData = [];
+
     function buildKeyboard() {
       const wrapper = document.getElementById('keysWrapper');
       wrapper.innerHTML = '';
-
-      const whiteKeys = [];
-      const blackKeys = [];
-
-      // Рассчитываем позиции
-      let whiteIndex = 0;
-      const totalWhiteKeys = Math.ceil(TOTAL_NOTES * 7 / 12) + 1;
+      whiteKeys.length = 0;
+      blackKeysData.length = 0;
 
       for (let i = 0; i < TOTAL_NOTES; i++) {
         const noteIndex = i % 12;
@@ -354,11 +428,9 @@
         const isBlack = noteName.includes('#');
 
         if (!isBlack) {
-          // Белая клавиша
           const key = document.createElement('button');
           key.className = 'white-key';
           key.dataset.note = noteName;
-          key.dataset.freq = getFrequency(noteName);
           key.setAttribute('aria-label', noteName);
           key.textContent = noteName;
 
@@ -368,97 +440,195 @@
           });
           key.addEventListener('pointerup', () => stopNote(noteName, key));
           key.addEventListener('pointerleave', () => stopNote(noteName, key));
+          key.addEventListener('pointercancel', () => stopNote(noteName, key));
 
           wrapper.appendChild(key);
           whiteKeys.push(key);
         } else {
-          blackKeys.push({ noteName, index: whiteKeys.length - 1, freq: getFrequency(noteName) });
+          blackKeysData.push({ noteName, whiteIndex: whiteKeys.length - 1 });
         }
       }
 
-      // Добавляем чёрные клавиши с абсолютным позиционированием
-      // Позиция чёрной клавиши: после белой клавиши с индексом whiteIndex
-      // Смещение: (whiteIndex + 1) / totalWhite * 100% - половина ширины чёрной
-      blackKeys.forEach(({ noteName, index, freq }) => {
+      // Чёрные клавиши
+      blackKeysData.forEach(({ noteName, whiteIndex }) => {
         const key = document.createElement('button');
         key.className = 'black-key';
         key.dataset.note = noteName;
-        key.dataset.freq = freq;
         key.setAttribute('aria-label', noteName);
 
-        // Позиция: центрируем на границе между белыми клавишами
-        // index — индекс белой клавиши, после которой стоит чёрная
-        const leftPercent = ((index + 1) / whiteKeys.length) * 100;
-        const blackWidthPercent = (100 / whiteKeys.length) * 0.62; // 62% от белой
+        const leftPercent = ((whiteIndex + 1) / whiteKeys.length) * 100;
+        const blackWidthPercent = (100 / whiteKeys.length) * 0.62;
         key.style.left = `calc(${leftPercent}% - ${blackWidthPercent / 2}%)`;
         key.style.width = `${blackWidthPercent}%`;
 
         key.addEventListener('pointerdown', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          playNote(noteName, freq, key);
+          playNote(noteName, getFrequency(noteName), key);
         });
-        key.addEventListener('pointerup', (e) => {
-          e.stopPropagation();
-          stopNote(noteName, key);
-        });
-        key.addEventListener('pointerleave', (e) => {
-          e.stopPropagation();
-          stopNote(noteName, key);
-        });
+        key.addEventListener('pointerup', (e) => { e.stopPropagation(); stopNote(noteName, key); });
+        key.addEventListener('pointerleave', (e) => { e.stopPropagation(); stopNote(noteName, key); });
+        key.addEventListener('pointercancel', (e) => { e.stopPropagation(); stopNote(noteName, key); });
 
         wrapper.appendChild(key);
       });
     }
 
-    // ===== Частота ноты =====
-    function getFrequency(note) {
-      const match = note.match(/^([A-G]#?)(\d+)$/);
-      if (!match) return 440;
-      const name = match[1];
-      const octave = parseInt(match[2]);
-      const semitoneMap = { 'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11 };
-      const semitone = semitoneMap[name];
-      const midi = (octave + 1) * 12 + semitone;
-      return 440 * Math.pow(2, (midi - 69) / 12);
+    // ===== Расчёт базовой ширины и высоты клавиш =====
+    function recalcBaseWidth() {
+      const viewport = document.getElementById('pianoViewport');
+      const viewportWidth = viewport.clientWidth;
+      // При 100% пианино занимает всю доступную ширину, но не меньше 600px
+      baseWidth = Math.max(viewportWidth, 600);
+      // На мобильных при 100% пусть всё помещается — уменьшаем минимальную ширину
+      if (window.innerWidth < 700) {
+        baseWidth = viewportWidth;
+      }
     }
+
+    function applyZoom() {
+      const container = document.getElementById('pianoContainer');
+      const wrapper = document.getElementById('keysWrapper');
+      const zoomLabel = document.getElementById('zoomLevel');
+
+      const width = baseWidth * zoomLevel;
+      container.style.width = width + 'px';
+
+      // Высота клавиш пропорциональна ширине для красивого вида
+      // Соотношение как у реального пианино: примерно 220px высота при ширине ~1100px
+      const keysHeight = Math.max(120, Math.min(280, width * 0.2));
+      wrapper.style.height = keysHeight + 'px';
+
+      // Размер шрифта на белых клавишах
+      const whiteCount = whiteKeys.length;
+      const whiteWidth = width / whiteCount;
+      const fontSize = Math.max(7, Math.min(12, whiteWidth * 0.35));
+      whiteKeys.forEach(k => k.style.fontSize = fontSize + 'px');
+
+      zoomLabel.textContent = Math.round(zoomLevel * 100) + '%';
+
+      // Кнопки зума
+      document.getElementById('zoomOut').disabled = zoomLevel <= MIN_ZOOM + 0.001;
+      document.getElementById('zoomIn').disabled = zoomLevel >= MAX_ZOOM - 0.001;
+    }
+
+    function setZoom(newZoom, centerClientX) {
+      const viewport = document.getElementById('pianoViewport');
+      const oldZoom = zoomLevel;
+      newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+      if (Math.abs(newZoom - oldZoom) < 0.001) return;
+
+      // Запоминаем точку под курсором/пальцем
+      const rect = viewport.getBoundingClientRect();
+      let focalX;
+      if (centerClientX !== undefined) {
+        focalX = centerClientX - rect.left;
+      } else {
+        focalX = viewport.clientWidth / 2;
+      }
+      // Позиция в контенте до зума
+      const contentX = (viewport.scrollLeft + focalX) / oldZoom;
+
+      zoomLevel = newZoom;
+      applyZoom();
+
+      // Восстанавливаем позицию
+      requestAnimationFrame(() => {
+        viewport.scrollLeft = contentX * zoomLevel - focalX;
+      });
+    }
+
+    // ===== Кнопки зума =====
+    document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoomLevel + ZOOM_STEP));
+    document.getElementById('zoomOut').addEventListener('click', () => setZoom(zoomLevel - ZOOM_STEP));
+
+    document.getElementById('zoomFit').addEventListener('click', () => {
+      // Fit = 100% относительно viewport
+      recalcBaseWidth();
+      zoomLevel = 1;
+      applyZoom();
+      document.getElementById('pianoViewport').scrollLeft = 0;
+    });
+
+    // ===== Ctrl+колесо мыши =====
+    const viewport = document.getElementById('pianoViewport');
+    viewport.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+        setZoom(zoomLevel + delta, e.clientX);
+      }
+    }, { passive: false });
+
+    // ===== Pinch-to-zoom на тач-устройствах =====
+    let pinchState = null;
+    const keysWrapperEl = document.getElementById('keysWrapper');
+
+    keysWrapperEl.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const t1 = e.touches[0], t2 = e.touches[1];
+        pinchState = {
+          initialDistance: Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY),
+          initialZoom: zoomLevel,
+          centerX: (t1.clientX + t2.clientX) / 2
+        };
+      }
+    }, { passive: false });
+
+    keysWrapperEl.addEventListener('touchmove', (e) => {
+      if (pinchState && e.touches.length === 2) {
+        e.preventDefault();
+        const t1 = e.touches[0], t2 = e.touches[1];
+        const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+        const scale = dist / pinchState.initialDistance;
+        const newZoom = pinchState.initialZoom * scale;
+        setZoom(newZoom, pinchState.centerX);
+      }
+    }, { passive: false });
+
+    keysWrapperEl.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) pinchState = null;
+    });
+
+    // ===== Двойной клик для зума =====
+    keysWrapperEl.addEventListener('dblclick', (e) => {
+      // Сброс к 100% если уже увеличено, иначе 2x
+      if (zoomLevel > 1.1) {
+        recalcBaseWidth();
+        setZoom(1, e.clientX);
+      } else {
+        setZoom(2, e.clientX);
+      }
+    });
 
     // ===== Воспроизведение =====
     function playNote(noteName, freq, element) {
       if (!soundEnabled) return;
-
       initAudio();
 
-      // Если нота уже играет — останавливаем
-      if (activeOscillators.has(noteName)) {
-        stopOscillator(noteName);
-      }
+      if (activeOscillators.has(noteName)) stopOscillator(noteName);
 
-      // Создаём осциллятор с несколькими гармониками для реалистичного звука
       const now = audioCtx.currentTime;
       const masterGain = audioCtx.createGain();
       masterGain.connect(audioCtx.destination);
 
-      // Основной тон
       const osc1 = audioCtx.createOscillator();
       osc1.type = 'sine';
       osc1.frequency.value = freq;
 
-      // Вторая гармоника (октава)
       const osc2 = audioCtx.createOscillator();
       osc2.type = 'sine';
       osc2.frequency.value = freq * 2;
       const gain2 = audioCtx.createGain();
       gain2.gain.value = 0.15;
 
-      // Третья гармоника
       const osc3 = audioCtx.createOscillator();
       osc3.type = 'sine';
       osc3.frequency.value = freq * 3;
       const gain3 = audioCtx.createGain();
       gain3.gain.value = 0.05;
 
-      // Небольшая расстройка для "теплоты"
       const osc4 = audioCtx.createOscillator();
       osc4.type = 'triangle';
       osc4.frequency.value = freq * 1.002;
@@ -466,30 +636,21 @@
       gain4.gain.value = 0.1;
 
       osc1.connect(masterGain);
-      osc2.connect(gain2);
-      gain2.connect(masterGain);
-      osc3.connect(gain3);
-      gain3.connect(masterGain);
-      osc4.connect(gain4);
-      gain4.connect(masterGain);
+      osc2.connect(gain2); gain2.connect(masterGain);
+      osc3.connect(gain3); gain3.connect(masterGain);
+      osc4.connect(gain4); gain4.connect(masterGain);
 
-      // Огибающая: быстрая атака, плавное затухание
       masterGain.gain.setValueAtTime(0.0001, now);
       masterGain.gain.exponentialRampToValueAtTime(0.4, now + 0.01);
       masterGain.gain.exponentialRampToValueAtTime(0.2, now + 0.1);
       masterGain.gain.exponentialRampToValueAtTime(0.12, now + 0.8);
 
-      osc1.start(now);
-      osc2.start(now);
-      osc3.start(now);
-      osc4.start(now);
+      osc1.start(now); osc2.start(now); osc3.start(now); osc4.start(now);
 
       activeOscillators.set(noteName, { osc1, osc2, osc3, osc4, masterGain, gain2, gain3, gain4 });
 
-      // Визуальная подсветка
       element.classList.add('pressed');
 
-      // Показ частоты
       const volDisplay = document.getElementById('volumeDisplay');
       volDisplay.classList.add('active');
       volDisplay.textContent = '&#9834; ' + Math.round(freq) + ' Hz';
@@ -503,7 +664,6 @@
       volDisplay.textContent = '&#9834;';
 
       if (sustainEnabled && activeOscillators.has(noteName)) {
-        // Переводим в сустейн — постепенно затухает
         const entry = activeOscillators.get(noteName);
         activeOscillators.delete(noteName);
         sustainedNotes.set(noteName, entry);
@@ -528,30 +688,25 @@
     function stopOscillator(noteName) {
       const entry = activeOscillators.get(noteName);
       if (!entry) return;
-
       const now = audioCtx.currentTime;
       const { osc1, osc2, osc3, osc4, masterGain } = entry;
-
       masterGain.gain.cancelScheduledValues(now);
       masterGain.gain.setValueAtTime(masterGain.gain.value, now);
       masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
-
       setTimeout(() => {
         try { osc1.stop(); osc2.stop(); osc3.stop(); osc4.stop(); } catch (err) {}
       }, 200);
-
       activeOscillators.delete(noteName);
     }
 
-    // ===== Управление =====
+    // ===== Управление звуком =====
     document.getElementById('soundToggle').addEventListener('click', function() {
       soundEnabled = !soundEnabled;
       this.classList.toggle('on', soundEnabled);
       this.innerHTML = soundEnabled ? '&#9834; Звук' : '&#9834; Выкл';
       if (!soundEnabled) {
-        // Останавливаем все звуки
         activeOscillators.forEach((_, note) => stopOscillator(note));
-        sustainedNotes.forEach((entry, note) => {
+        sustainedNotes.forEach((entry) => {
           try { entry.osc1.stop(); entry.osc2.stop(); entry.osc3.stop(); entry.osc4.stop(); } catch (err) {}
         });
         sustainedNotes.clear();
@@ -562,8 +717,7 @@
       sustainEnabled = !sustainEnabled;
       this.classList.toggle('on', sustainEnabled);
       if (!sustainEnabled) {
-        // Заглушаем все сустейн-ноты
-        sustainedNotes.forEach((entry, note) => {
+        sustainedNotes.forEach((entry) => {
           const now = audioCtx.currentTime;
           entry.masterGain.gain.cancelScheduledValues(now);
           entry.masterGain.gain.setValueAtTime(entry.masterGain.gain.value, now);
@@ -576,14 +730,13 @@
       }
     });
 
-    // ===== Клавиатура (QWERTY) =====
+    // ===== Клавиатура QWERTY =====
     const KEY_MAP = {
       'a': 'C2', 'w': 'C#2', 's': 'D2', 'e': 'D#2', 'd': 'E2',
       'f': 'F2', 't': 'F#2', 'g': 'G2', 'y': 'G#2', 'h': 'A2',
       'u': 'A#2', 'j': 'B2', 'k': 'C3', 'o': 'C#3', 'l': 'D3',
       'p': 'D#3', ';': 'E3', "'": 'F3', ']': 'F#3', '\\': 'G3'
     };
-
     const heldKeys = new Set();
 
     document.addEventListener('keydown', (e) => {
@@ -593,11 +746,8 @@
       e.preventDefault();
       if (heldKeys.has(key)) return;
       heldKeys.add(key);
-
       const el = document.querySelector(`[data-note="${note}"]`);
-      if (el) {
-        playNote(note, getFrequency(note), el);
-      }
+      if (el) playNote(note, getFrequency(note), el);
     });
 
     document.addEventListener('keyup', (e) => {
@@ -611,7 +761,6 @@
 
     // ===== PWA =====
     let deferredPrompt = null;
-
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
@@ -621,7 +770,7 @@
     document.getElementById('installBtn').addEventListener('click', async () => {
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+      await deferredPrompt.userChoice;
       deferredPrompt = null;
       document.getElementById('installBanner').classList.remove('show');
     });
@@ -630,23 +779,40 @@
       document.getElementById('installBanner').classList.remove('show');
     });
 
-    // Регистрация Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(() => {});
       });
     }
 
-    // ===== Запуск =====
+    // ===== Инициализация =====
     buildKeyboard();
+    recalcBaseWidth();
+    applyZoom();
 
-    // Глобальный обработчик для предотвращения скролла при игре
+    // Пересчёт при изменении размера окна
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const oldBase = baseWidth;
+        recalcBaseWidth();
+        // Если пользователь не менял зум (был на Fit), подстраиваем
+        if (Math.abs(zoomLevel - 1) < 0.01) {
+          applyZoom();
+        } else {
+          // Корректируем пропорционально
+          applyZoom();
+        }
+      }, 150);
+    });
+
+    // Предотвращаем скролл страницы при игре, но разрешаем горизонтальный скролл
     document.addEventListener('touchstart', (e) => {
-      if (e.target.closest('.white-key, .black-key')) {
+      if (e.touches.length === 1 && e.target.closest('.white-key, .black-key')) {
         e.preventDefault();
       }
     }, { passive: false });
-
   </script>
 </body>
 </html>
