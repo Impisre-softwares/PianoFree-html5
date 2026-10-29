@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>PWA Пианино</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: linear-gradient(145deg, #0f0f1a 0%, #1a1a2e 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      padding: 16px;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
+    .piano-container {
+      width: 100%;
+      max-width: 1200px;
+      background: #16162a;
+      border-radius: 32px;
+      padding: 24px 16px 32px;
+      box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.7),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+
+    .piano-title {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.25);
+      font-size: 11px;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      font-weight: 500;
+    }
+
+    .octave-label {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 2px;
+      margin-bottom: 6px;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.15);
+      letter-spacing: 1px;
+    }
+
+    .keys-wrapper {
+      position: relative;
+      display: flex;
+      height: 220px;
+      gap: 2px;
+      padding: 0 2px;
+    }
+
+    .white-key {
+      flex: 1;
+      background: linear-gradient(180deg, #f5f5f0 0%, #e8e8e0 40%, #d8d8d0 100%);
+      border-radius: 0 0 8px 8px;
+      box-shadow:
+        0 4px 0 #999,
+        0 6px 12px rgba(0, 0, 0, 0.4),
+        inset 0 -2px 0 rgba(255, 255, 255, 0.6),
+        inset 0 2px 0 rgba(255, 255, 255, 0.9);
+      cursor: pointer;
+      position: relative;
+      transition: all 0.06s ease;
+      border: none;
+      outline: none;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 12px;
+      font-size: 10px;
+      color: #aaa;
+      font-weight: 600;
+    }
+
+    .white-key:active,
+    .white-key.active {
+      background: linear-gradient(180deg, #d0d0c8 0%, #c0c0b8 100%);
+      box-shadow:
+        0 1px 0 #888,
+        0 2px 6px rgba(0, 0, 0, 0.3),
+        inset 0 2px 4px rgba(0, 0, 0, 0.1);
+      transform: translateY(3px);
+    }
+
+    .white-key.pressed {
+      background: linear-gradient(180deg, #ffe8a0 0%, #ffd866 100%);
+      box-shadow:
+        0 1px 0 #cc9900,
+        0 2px 10px rgba(255, 200, 50, 0.5),
+        inset 0 2px 4px rgba(255, 255, 255, 0.5);
+    }
+
+    .black-key {
+      position: absolute;
+      width: 8.5%;
+      height: 60%;
+      background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 40%, #0d0d0d 100%);
+      border-radius: 0 0 6px 6px;
+      box-shadow:
+        0 3px 0 #000,
+        0 5px 10px rgba(0, 0, 0, 0.6),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      cursor: pointer;
+      transition: all 0.06s ease;
+      z-index: 10;
+      border: none;
+      outline: none;
+      top: 0;
+    }
+
+    .black-key:active,
+    .black-key.active {
+      background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+      box-shadow:
+        0 1px 0 #000,
+        0 2px 6px rgba(0, 0, 0, 0.5),
+        inset 0 1px 3px rgba(0, 0, 0, 0.5);
+      transform: translateY(2px);
+    }
+
+    .black-key.pressed {
+      background: linear-gradient(180deg, #ffaa33 0%, #ff8800 100%);
+      box-shadow:
+        0 1px 0 #aa5500,
+        0 2px 12px rgba(255, 170, 0, 0.5),
+        inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .control-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.6);
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      letter-spacing: 0.5px;
+    }
+
+    .control-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .control-btn:active {
+      transform: scale(0.95);
+    }
+
+    .control-btn.on {
+      background: rgba(255, 200, 50, 0.15);
+      border-color: rgba(255, 200, 50, 0.3);
+      color: #ffd866;
+    }
+
+    .install-banner {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e1e36;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 12px 20px;
+      display: none;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+      z-index: 100;
+      animation: slideUp 0.4s ease;
+    }
+
+    .install-banner.show {
+      display: flex;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    .install-banner span {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 13px;
+    }
+
+    .install-btn {
+      background: linear-gradient(135deg, #ffd866, #ffaa00);
+      border: none;
+      color: #1a1a2e;
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+
+    .install-close {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.3);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+
+    @media (max-width: 600px) {
+      .keys-wrapper {
+        height: 160px;
+      }
+      .piano-container {
+        padding: 16px 8px 24px;
+        border-radius: 24px;
+      }
+      .white-key {
+        border-radius: 0 0 5px 5px;
+        font-size: 8px;
+        padding-bottom: 8px;
+      }
+      .black-key {
+        border-radius: 0 0 4px 4px;
+        width: 9%;
+      }
+      .octave-label {
+        font-size: 9px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .keys-wrapper {
+        height: 130px;
+      }
+    }
+
+    /* Volume indicator */
+    .volume-display {
+      position: absolute;
+      top: 12px;
+      right: 20px;
+      color: rgba(255, 255, 255, 0.2);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      transition: color 0.3s;
+    }
+
+    .volume-display.active {
+      color: #ffd866;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="piano-container">
+    <div class="volume-display" id="volumeDisplay">&#9834;</div>
+    <div class="piano-title">Piano</div>
+
+    <div class="octave-label">
+      <span>C2</span>
+      <span>C3</span>
+      <span>C4</span>
+      <span>C5</span>
+    </div>
+
+    <div class="keys-wrapper" id="keysWrapper">
+      <!-- Клавиши генерируются JS -->
+    </div>
+
+    <div class="controls">
+      <button class="control-btn on" id="soundToggle">&#9834; Звук</button>
+      <button class="control-btn" id="sustainToggle">&#9835; Сустейн</button>
+    </div>
+  </div>
+
+  <div class="install-banner" id="installBanner">
+    <span>Установить приложение?</span>
+    <button class="install-btn" id="installBtn">Установить</button>
+    <button class="install-close" id="installClose">&times;</button>
+  </div>
+
+  <script>
+    // ===== Конфигурация =====
+    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const START_OCTAVE = 2;
+    const NUM_OCTAVES = 4;
+    const TOTAL_NOTES = NUM_OCTAVES * 12 + 1; // +1 для последней ноты C
+
+    let audioCtx = null;
+    let soundEnabled = true;
+    let sustainEnabled = false;
+    let activeOscillators = new Map(); // note -> { osc, gain }
+    let sustainedNotes = new Map();
+
+    // ===== Инициализация AudioContext =====
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // ===== Генерация клавиш =====
+    function buildKeyboard() {
+      const wrapper = document.getElementById('keysWrapper');
+      wrapper.innerHTML = '';
+
+      const whiteKeys = [];
+      const blackKeys = [];
+
+      // Рассчитываем позиции
+      let whiteIndex = 0;
+      const totalWhiteKeys = Math.ceil(TOTAL_NOTES * 7 / 12) + 1;
+
+      for (let i = 0; i < TOTAL_NOTES; i++) {
+        const noteIndex = i % 12;
+        const octave = Math.floor(i / 12) + START_OCTAVE;
+        const noteName = NOTE_NAMES[noteIndex] + octave;
+        const isBlack = noteName.includes('#');
+
+        if (!isBlack) {
+          // Белая клавиша
+          const key = document.createElement('button');
+          key.className = 'white-key';
+          key.dataset.note = noteName;
+          key.dataset.freq = getFrequency(noteName);
+          key.setAttribute('aria-label', noteName);
+          key.textContent = noteName;
+
+          key.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            playNote(noteName, getFrequency(noteName), key);
+          });
+          key.addEventListener('pointerup', () => stopNote(noteName, key));
+          key.addEventListener('pointerleave', () => stopNote(noteName, key));
+
+          wrapper.appendChild(key);
+          whiteKeys.push(key);
+        } else {
+          blackKeys.push({ noteName, index: whiteKeys.length - 1, freq: getFrequency(noteName) });
+        }
+      }
+
+      // Добавляем чёрные клавиши с абсолютным позиционированием
+      // Позиция чёрной клавиши: после белой клавиши с индексом whiteIndex
+      // Смещение: (whiteIndex + 1) / totalWhite * 100% - половина ширины чёрной
+      blackKeys.forEach(({ noteName, index, freq }) => {
+        const key = document.createElement('button');
+        key.className = 'black-key';
+        key.dataset.note = noteName;
+        key.dataset.freq = freq;
+        key.setAttribute('aria-label', noteName);
+
+        // Позиция: центрируем на границе между белыми клавишами
+        // index — индекс белой клавиши, после которой стоит чёрная
+        const leftPercent = ((index + 1) / whiteKeys.length) * 100;
+        const blackWidthPercent = (100 / whiteKeys.length) * 0.62; // 62% от белой
+        key.style.left = `calc(${leftPercent}% - ${blackWidthPercent / 2}%)`;
+        key.style.width = `${blackWidthPercent}%`;
+
+        key.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          playNote(noteName, freq, key);
+        });
+        key.addEventListener('pointerup', (e) => {
+          e.stopPropagation();
+          stopNote(noteName, key);
+        });
+        key.addEventListener('pointerleave', (e) => {
+          e.stopPropagation();
+          stopNote(noteName, key);
+        });
+
+        wrapper.appendChild(key);
+      });
+    }
+
+    // ===== Частота ноты =====
+    function getFrequency(note) {
+      const match = note.match(/^([A-G]#?)(\d+)$/);
+      if (!match) return 440;
+      const name = match[1];
+      const octave = parseInt(match[2]);
+      const semitoneMap = { 'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11 };
+      const semitone = semitoneMap[name];
+      const midi = (octave + 1) * 12 + semitone;
+      return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    // ===== Воспроизведение =====
+    function playNote(noteName, freq, element) {
+      if (!soundEnabled) return;
+
+      initAudio();
+
+      // Если нота уже играет — останавливаем
+      if (activeOscillators.has(noteName)) {
+        stopOscillator(noteName);
+      }
+
+      // Создаём осциллятор с несколькими гармониками для реалистичного звука
+      const now = audioCtx.currentTime;
+      const masterGain = audioCtx.createGain();
+      masterGain.connect(audioCtx.destination);
+
+      // Основной тон
+      const osc1 = audioCtx.createOscillator();
+      osc1.type = 'sine';
+      osc1.frequency.value = freq;
+
+      // Вторая гармоника (октава)
+      const osc2 = audioCtx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.value = freq * 2;
+      const gain2 = audioCtx.createGain();
+      gain2.gain.value = 0.15;
+
+      // Третья гармоника
+      const osc3 = audioCtx.createOscillator();
+      osc3.type = 'sine';
+      osc3.frequency.value = freq * 3;
+      const gain3 = audioCtx.createGain();
+      gain3.gain.value = 0.05;
+
+      // Небольшая расстройка для "теплоты"
+      const osc4 = audioCtx.createOscillator();
+      osc4.type = 'triangle';
+      osc4.frequency.value = freq * 1.002;
+      const gain4 = audioCtx.createGain();
+      gain4.gain.value = 0.1;
+
+      osc1.connect(masterGain);
+      osc2.connect(gain2);
+      gain2.connect(masterGain);
+      osc3.connect(gain3);
+      gain3.connect(masterGain);
+      osc4.connect(gain4);
+      gain4.connect(masterGain);
+
+      // Огибающая: быстрая атака, плавное затухание
+      masterGain.gain.setValueAtTime(0.0001, now);
+      masterGain.gain.exponentialRampToValueAtTime(0.4, now + 0.01);
+      masterGain.gain.exponentialRampToValueAtTime(0.2, now + 0.1);
+      masterGain.gain.exponentialRampToValueAtTime(0.12, now + 0.8);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc3.start(now);
+      osc4.start(now);
+
+      activeOscillators.set(noteName, { osc1, osc2, osc3, osc4, masterGain, gain2, gain3, gain4 });
+
+      // Визуальная подсветка
+      element.classList.add('pressed');
+
+      // Показ частоты
+      const volDisplay = document.getElementById('volumeDisplay');
+      volDisplay.classList.add('active');
+      volDisplay.textContent = '&#9834; ' + Math.round(freq) + ' Hz';
+    }
+
+    function stopNote(noteName, element) {
+      if (element) element.classList.remove('pressed');
+
+      const volDisplay = document.getElementById('volumeDisplay');
+      volDisplay.classList.remove('active');
+      volDisplay.textContent = '&#9834;';
+
+      if (sustainEnabled && activeOscillators.has(noteName)) {
+        // Переводим в сустейн — постепенно затухает
+        const entry = activeOscillators.get(noteName);
+        activeOscillators.delete(noteName);
+        sustainedNotes.set(noteName, entry);
+
+        const now = audioCtx.currentTime;
+        entry.masterGain.gain.cancelScheduledValues(now);
+        entry.masterGain.gain.setValueAtTime(entry.masterGain.gain.value, now);
+        entry.masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
+
+        setTimeout(() => {
+          if (sustainedNotes.has(noteName)) {
+            const e = sustainedNotes.get(noteName);
+            try { e.osc1.stop(); e.osc2.stop(); e.osc3.stop(); e.osc4.stop(); } catch (err) {}
+            sustainedNotes.delete(noteName);
+          }
+        }, 1600);
+      } else {
+        stopOscillator(noteName);
+      }
+    }
+
+    function stopOscillator(noteName) {
+      const entry = activeOscillators.get(noteName);
+      if (!entry) return;
+
+      const now = audioCtx.currentTime;
+      const { osc1, osc2, osc3, osc4, masterGain } = entry;
+
+      masterGain.gain.cancelScheduledValues(now);
+      masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+
+      setTimeout(() => {
+        try { osc1.stop(); osc2.stop(); osc3.stop(); osc4.stop(); } catch (err) {}
+      }, 200);
+
+      activeOscillators.delete(noteName);
+    }
+
+    // ===== Управление =====
+    document.getElementById('soundToggle').addEventListener('click', function() {
+      soundEnabled = !soundEnabled;
+      this.classList.toggle('on', soundEnabled);
+      this.innerHTML = soundEnabled ? '&#9834; Звук' : '&#9834; Выкл';
+      if (!soundEnabled) {
+        // Останавливаем все звуки
+        activeOscillators.forEach((_, note) => stopOscillator(note));
+        sustainedNotes.forEach((entry, note) => {
+          try { entry.osc1.stop(); entry.osc2.stop(); entry.osc3.stop(); entry.osc4.stop(); } catch (err) {}
+        });
+        sustainedNotes.clear();
+      }
+    });
+
+    document.getElementById('sustainToggle').addEventListener('click', function() {
+      sustainEnabled = !sustainEnabled;
+      this.classList.toggle('on', sustainEnabled);
+      if (!sustainEnabled) {
+        // Заглушаем все сустейн-ноты
+        sustainedNotes.forEach((entry, note) => {
+          const now = audioCtx.currentTime;
+          entry.masterGain.gain.cancelScheduledValues(now);
+          entry.masterGain.gain.setValueAtTime(entry.masterGain.gain.value, now);
+          entry.masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+          setTimeout(() => {
+            try { entry.osc1.stop(); entry.osc2.stop(); entry.osc3.stop(); entry.osc4.stop(); } catch (err) {}
+          }, 150);
+        });
+        sustainedNotes.clear();
+      }
+    });
+
+    // ===== Клавиатура (QWERTY) =====
+    const KEY_MAP = {
+      'a': 'C2', 'w': 'C#2', 's': 'D2', 'e': 'D#2', 'd': 'E2',
+      'f': 'F2', 't': 'F#2', 'g': 'G2', 'y': 'G#2', 'h': 'A2',
+      'u': 'A#2', 'j': 'B2', 'k': 'C3', 'o': 'C#3', 'l': 'D3',
+      'p': 'D#3', ';': 'E3', "'": 'F3', ']': 'F#3', '\\': 'G3'
+    };
+
+    const heldKeys = new Set();
+
+    document.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+      const note = KEY_MAP[key];
+      if (!note) return;
+      e.preventDefault();
+      if (heldKeys.has(key)) return;
+      heldKeys.add(key);
+
+      const el = document.querySelector(`[data-note="${note}"]`);
+      if (el) {
+        playNote(note, getFrequency(note), el);
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      const key = e.key.toLowerCase();
+      const note = KEY_MAP[key];
+      if (!note) return;
+      heldKeys.delete(key);
+      const el = document.querySelector(`[data-note="${note}"]`);
+      stopNote(note, el);
+    });
+
+    // ===== PWA =====
+    let deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('installBanner').classList.add('show');
+    });
+
+    document.getElementById('installBtn').addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      document.getElementById('installBanner').classList.remove('show');
+    });
+
+    document.getElementById('installClose').addEventListener('click', () => {
+      document.getElementById('installBanner').classList.remove('show');
+    });
+
+    // Регистрация Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+
+    // ===== Запуск =====
+    buildKeyboard();
+
+    // Глобальный обработчик для предотвращения скролла при игре
+    document.addEventListener('touchstart', (e) => {
+      if (e.target.closest('.white-key, .black-key')) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+  </script>
+</body>
+</html>
