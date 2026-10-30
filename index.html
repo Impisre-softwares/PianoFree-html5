@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#1a1a2e">
   <title>PWA Пианино</title>
+  
+  <!-- Подключение манифеста -->
   <link rel="manifest" href="manifest.json">
+  
+  <!-- Иконка для iOS (Safari) теперь берется из папки icons -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  
   <style>
     * {
       margin: 0;
@@ -93,7 +99,6 @@
       display: flex;
       gap: 2px;
       padding: 0 2px;
-      /* Высота задаётся через JS в зависимости от ширины */
     }
 
     .white-key {
@@ -383,7 +388,7 @@
     const MAX_ZOOM = 3.0;
     const ZOOM_STEP = 0.25;
     let zoomLevel = 1;
-    let baseWidth = 0; // ширина при 100% (подстраивается под экран)
+    let baseWidth = 0;
 
     let audioCtx = null;
     let soundEnabled = true;
@@ -474,13 +479,11 @@
       });
     }
 
-    // ===== Расчёт базовой ширины и высоты клавиш =====
+    // ===== Расчёт базовой ширины =====
     function recalcBaseWidth() {
       const viewport = document.getElementById('pianoViewport');
       const viewportWidth = viewport.clientWidth;
-      // При 100% пианино занимает всю доступную ширину, но не меньше 600px
       baseWidth = Math.max(viewportWidth, 600);
-      // На мобильных при 100% пусть всё помещается — уменьшаем минимальную ширину
       if (window.innerWidth < 700) {
         baseWidth = viewportWidth;
       }
@@ -494,12 +497,9 @@
       const width = baseWidth * zoomLevel;
       container.style.width = width + 'px';
 
-      // Высота клавиш пропорциональна ширине для красивого вида
-      // Соотношение как у реального пианино: примерно 220px высота при ширине ~1100px
       const keysHeight = Math.max(120, Math.min(280, width * 0.2));
       wrapper.style.height = keysHeight + 'px';
 
-      // Размер шрифта на белых клавишах
       const whiteCount = whiteKeys.length;
       const whiteWidth = width / whiteCount;
       const fontSize = Math.max(7, Math.min(12, whiteWidth * 0.35));
@@ -507,7 +507,6 @@
 
       zoomLabel.textContent = Math.round(zoomLevel * 100) + '%';
 
-      // Кнопки зума
       document.getElementById('zoomOut').disabled = zoomLevel <= MIN_ZOOM + 0.001;
       document.getElementById('zoomIn').disabled = zoomLevel >= MAX_ZOOM - 0.001;
     }
@@ -518,7 +517,6 @@
       newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
       if (Math.abs(newZoom - oldZoom) < 0.001) return;
 
-      // Запоминаем точку под курсором/пальцем
       const rect = viewport.getBoundingClientRect();
       let focalX;
       if (centerClientX !== undefined) {
@@ -526,31 +524,27 @@
       } else {
         focalX = viewport.clientWidth / 2;
       }
-      // Позиция в контенте до зума
       const contentX = (viewport.scrollLeft + focalX) / oldZoom;
 
       zoomLevel = newZoom;
       applyZoom();
 
-      // Восстанавливаем позицию
       requestAnimationFrame(() => {
         viewport.scrollLeft = contentX * zoomLevel - focalX;
       });
     }
 
-    // ===== Кнопки зума =====
+    // ===== Управление зумом =====
     document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoomLevel + ZOOM_STEP));
     document.getElementById('zoomOut').addEventListener('click', () => setZoom(zoomLevel - ZOOM_STEP));
 
     document.getElementById('zoomFit').addEventListener('click', () => {
-      // Fit = 100% относительно viewport
       recalcBaseWidth();
       zoomLevel = 1;
       applyZoom();
       document.getElementById('pianoViewport').scrollLeft = 0;
     });
 
-    // ===== Ctrl+колесо мыши =====
     const viewport = document.getElementById('pianoViewport');
     viewport.addEventListener('wheel', (e) => {
       if (e.ctrlKey || e.metaKey) {
@@ -560,7 +554,6 @@
       }
     }, { passive: false });
 
-    // ===== Pinch-to-zoom на тач-устройствах =====
     let pinchState = null;
     const keysWrapperEl = document.getElementById('keysWrapper');
 
@@ -591,9 +584,7 @@
       if (e.touches.length < 2) pinchState = null;
     });
 
-    // ===== Двойной клик для зума =====
     keysWrapperEl.addEventListener('dblclick', (e) => {
-      // Сброс к 100% если уже увеличено, иначе 2x
       if (zoomLevel > 1.1) {
         recalcBaseWidth();
         setZoom(1, e.clientX);
@@ -602,7 +593,7 @@
       }
     });
 
-    // ===== Воспроизведение =====
+    // ===== Звук =====
     function playNote(noteName, freq, element) {
       if (!soundEnabled) return;
       initAudio();
@@ -699,7 +690,7 @@
       activeOscillators.delete(noteName);
     }
 
-    // ===== Управление звуком =====
+    // ===== Переключатели =====
     document.getElementById('soundToggle').addEventListener('click', function() {
       soundEnabled = !soundEnabled;
       this.classList.toggle('on', soundEnabled);
@@ -790,24 +781,15 @@
     recalcBaseWidth();
     applyZoom();
 
-    // Пересчёт при изменении размера окна
     let resizeTimer;
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        const oldBase = baseWidth;
         recalcBaseWidth();
-        // Если пользователь не менял зум (был на Fit), подстраиваем
-        if (Math.abs(zoomLevel - 1) < 0.01) {
-          applyZoom();
-        } else {
-          // Корректируем пропорционально
-          applyZoom();
-        }
+        applyZoom();
       }, 150);
     });
 
-    // Предотвращаем скролл страницы при игре, но разрешаем горизонтальный скролл
     document.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1 && e.target.closest('.white-key, .black-key')) {
         e.preventDefault();
